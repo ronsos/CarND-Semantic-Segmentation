@@ -33,7 +33,19 @@ def load_vgg(sess, vgg_path):
     vgg_layer4_out_tensor_name = 'layer4_out:0'
     vgg_layer7_out_tensor_name = 'layer7_out:0'
     
-    return None, None, None, None, None
+    # Load session and graph
+    tf.saved_model.loader.load(sess, [vgg_tag], vgg_path)
+    print('Loading VGG...')
+    graph = tf.get_default_graph()
+    
+    # Get layers
+    image_input = graph.get_tensor_by_name(vgg_input_tensor_name)
+    keep_prob = graph.get_tensor_by_name(vgg_keep_prob_tensor_name)
+    vgg_layer3_out = graph.get_tensor_by_name(vgg_layer3_out_tensor_name)
+    vgg_layer4_out = graph.get_tensor_by_name(vgg_layer4_out_tensor_name)
+    vgg_layer7_out = graph.get_tensor_by_name(vgg_layer7_out_tensor_name)
+    
+    return image_input, keep_prob, vgg_layer3_out, vgg_layer4_out, vgg_layer7_out 
 tests.test_load_vgg(load_vgg, tf)
 
 
@@ -46,8 +58,32 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :param num_classes: Number of classes to classify
     :return: The Tensor for the last layer of output
     """
-    # TODO: Implement function
-    return None
+    # Layers from 
+    # https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf
+    
+    # Apply 1x1 convolution to vgg layer 7 out
+    conv_1x1 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    
+    # upscale by 2
+    output = tf.layers.conv2d_transpose(conv_1x1, num_classes, 4, 2, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    
+    # Add Pool4 skip connection
+    pool_4 = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    
+    output = tf.add(output, pool_4)
+    
+    # upscale by 2
+    output = tf.layers.conv2d_transpose(output, num_classes, 4, 2, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+
+    # Add Pool3 skip connection
+    pool_3 = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    
+    output = tf.add(output, pool_3)
+    
+    # upscale by 8 
+    output = tf.layers.conv2d_transpose(output, num_classes, 16, 2, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    
+    return output
 tests.test_layers(layers)
 
 
@@ -60,8 +96,24 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     :param num_classes: Number of classes to classify
     :return: Tuple of (logits, train_op, cross_entropy_loss)
     """
-    # TODO: Implement function
-    return None, None, None
+    # TODO: Implement function -- Classification and Loss in the classroom
+    
+    # Reshape NN output from 4D to 2D (logits and labels)
+    logits = tf.reshape(nn_last_layer, (-1, num_classes))
+    truth = tf.reshape(correct_label, (-1, num_classes))
+    
+    # Form the cross-entropy loss operation
+    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=truth))
+    loss_op = tf.reduce_mean(cross_entropy)
+    
+    # Create an ADAM Optimizer for training
+    optimizer = tf.train.AdamOptimizer(learning_rate)
+    
+    # Find training operation
+    train_op = optimizer.minimize(loss_op)
+
+    return logits, train_op, loss_op
+    
 tests.test_optimize(optimize)
 
 
@@ -81,6 +133,31 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param learning_rate: TF Placeholder for learning rate
     """
     # TODO: Implement function
+    for epochs in epochs:
+        for (image, label) in get_batches_fn(batch_size):
+            # Training
+            pass
+    # Initialize tf variables
+  
+    # Initialize list to store history of loss from training steps
+   
+    # Train the network for NUM_EPOCHS epochs.
+   
+        # Reset Batch Counter 
+       
+        # Generate batches of images and labels from the generator.
+       
+            # Handle irregularly shaped batches (not fully-sized)
+           
+             # Train the network for a single batch.
+            
+             # Print out the training progress and loss.
+             
+             # Append the loss to the list of losses for future plotting.         
+
+    # Return the list of losses during training.
+    #return loss_history
+    
     pass
 tests.test_train_nn(train_nn)
 
@@ -102,6 +179,7 @@ def run():
     with tf.Session() as sess:
         # Path to vgg model
         vgg_path = os.path.join(data_dir, 'vgg')
+        
         # Create function to get batches
         get_batches_fn = helper.gen_batch_function(os.path.join(data_dir, 'data_road/training'), image_shape)
 
@@ -109,6 +187,10 @@ def run():
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
         # TODO: Build NN using load_vgg, layers, and optimize function
+        input_image, keep_prob, layer3_out, layer4_out, layer7_out = load_vgg(sess, vgg_path)
+        layer_output = layers(layer3_out, layer4_out, layer7_out, num_classes)
+        
+        # then optimzer
 
         # TODO: Train NN using the train_nn function
 
