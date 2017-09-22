@@ -5,10 +5,24 @@ import warnings
 from distutils.version import LooseVersion
 import project_tests as tests
 
+#####################################################################
+# Ron Sostaric
+# 22 Sept 2017
+# Udacity Self-Driving Car Semantic Segmentation Project
+#
+# Sources:
+# - Class notes
+# - Class walkthrough 
+# - Class forums
+# - GitHub
+# - https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf
+#
+#####################################################################
+
 # Define global variables for hyperparameters
-N_EPOCHS = 2          # Number of training epochs
+N_EPOCHS = 1          # Number of training epochs
 LEARN_RATE = 1e-4    # Learning rate for ADAM optimizer
-BATCH_SIZE = 16         # Batch size
+BATCH_SIZE = 4 #16         # Batch size
 
 
 # Check TensorFlow Version
@@ -67,26 +81,26 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     # https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf
     
     # Apply 1x1 convolution to vgg layer 7 out
-    conv_1x1 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    conv_1x1 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, strides=1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     
     # upscale by 2
-    output = tf.layers.conv2d_transpose(conv_1x1, num_classes, 4, 2, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    output = tf.layers.conv2d_transpose(conv_1x1, num_classes, 4, strides=2, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     
     # Add Pool4 skip connection
-    pool_4 = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    pool_4 = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, strides=1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     
     output = tf.add(output, pool_4)
     
     # upscale by 2
-    output = tf.layers.conv2d_transpose(output, num_classes, 4, 2, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    output = tf.layers.conv2d_transpose(output, num_classes, 4, strides=2, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
 
     # Add Pool3 skip connection
-    pool_3 = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    pool_3 = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, strides=1, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     
     output = tf.add(output, pool_3)
     
     # upscale by 8 
-    output = tf.layers.conv2d_transpose(output, num_classes, 16, 2, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    output = tf.layers.conv2d_transpose(output, num_classes, 16, strides=8, padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     
     return output
 tests.test_layers(layers)
@@ -106,13 +120,16 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     # Reshape NN output from 4D to 2D (logits and labels)
     logits = tf.reshape(nn_last_layer, (-1, num_classes))
     truth = tf.reshape(correct_label, (-1, num_classes))
+    #print("logits size = ", logits.get_shape())
+    #print("correct labels size = ", correct_label.get_shape())
+    #print("truth labels size = ", truth.get_shape())
     
     # Form the cross-entropy loss operation
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=truth)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=truth, logits=logits)
     loss_op = tf.reduce_mean(cross_entropy)
     
     # Create an ADAM Optimizer for training
-    optimizer = tf.train.AdamOptimizer(learning_rate)
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
     
     # Find training operation
     train_op = optimizer.minimize(loss_op)
@@ -136,33 +153,46 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param keep_prob: TF Placeholder for dropout keep probability
     :param learning_rate: TF Placeholder for learning rate
     """
-    # TODO: Implement function
+    # Initialization
+    sess.run(tf.global_variables_initializer())
+    train_losses = []
+    loss = 0
+    n_batch = 0 
     
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-    
-        print("Training...")
-        print()
-        for i in range(epochs):
+    print("Training...")
+    print()     
+    for i in range(epochs):
         
-            for images, labels in get_batches_fn(batch_size):
+        # Loop over batches
+        for batch_images, batch_labels in get_batches_fn(batch_size):
+            
+            n_batch += 1
+            
+            #print('image shape', batch_images.shape)
+            #print('label shape', batch_labels.shape)
 
-                # Handle irregularly shaped batches (not fully-sized)
-                if images.shape[0] != batch_size:
-                    # Skip to next epoch
-                    continue
+            # Handle irregularly shaped batches (not fully-sized)
+            if batch_images.shape[0] != batch_size:
+                # Skip to next epoch
+                print ("Skip")
+                print()
+                continue
             
             # Train 
-                x, loss = sess.run([train_op, cross_entropy_loss], feed_dict={learning_rate: LEARN_RATE, keep_prob: 1.0, input_image: images, correct_label: labels})
+            feed = {input_image: batch_images, 
+                    correct_label: batch_labels, 
+                    keep_prob: 1.0,
+                    learning_rate: LEARN_RATE}
+                    
+            _, loss = sess.run([train_op, cross_entropy_loss], feed_dict=feed)
+
+            # Print out the training progress and loss.
+            print("Epoch #{}, Batch #{}, Loss {:.8f}".format((epoch+1), n_batch, loss))             
             
-                print("Epoch {} ...".format(i+1))
-                print("Loss = {:.3f}".format(loss))
-                print()
-        
-    #saver.save(sess, './lenet')
-    #print("Model saved")
+            # Append loss result to list
+            train_losses.append(loss)
     
-        pass
+        return train_losses
 tests.test_train_nn(train_nn)
 
 
@@ -177,7 +207,6 @@ def run():
     label = tf.placeholder(tf.float32, shape=[BATCH_SIZE, image_shape[0], image_shape[1], num_classes])
     learning_rate = tf.placeholder(tf.float32, shape=[])
     
-
     # Download pretrained vgg model
     helper.maybe_download_pretrained_vgg(data_dir)
 
@@ -199,11 +228,11 @@ def run():
         input_image, keep_prob, layer3_out, layer4_out, layer7_out = load_vgg(sess, vgg_path)
         layer_output = layers(layer3_out, layer4_out, layer7_out, num_classes)
         
-        # then optimzer
+        # Call optimzer with layer output
         logits, train_op, loss_op = optimize(layer_output, label, learning_rate, num_classes)
 
         # TODO: Train NN using the train_nn function
-        train_nn(sess, N_EPOCHS, BATCH_SIZE, get_batches_fn, train_op, loss_op, input_image, label, keep_prob, learning_rate)
+        loss_history = train_nn(sess, N_EPOCHS, BATCH_SIZE, get_batches_fn, train_op, loss_op, input_image, label, keep_prob, learning_rate)
 
         # TODO: Save inference data using helper.save_inference_samples
         helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
