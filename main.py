@@ -5,6 +5,11 @@ import warnings
 from distutils.version import LooseVersion
 import project_tests as tests
 
+# Define global variables for hyperparameters
+N_EPOCHS = 2          # Number of training epochs
+LEARN_RATE = 1e-4    # Learning rate for ADAM optimizer
+BATCH_SIZE = 16         # Batch size
+
 
 # Check TensorFlow Version
 assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), 'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
@@ -103,7 +108,7 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     truth = tf.reshape(correct_label, (-1, num_classes))
     
     # Form the cross-entropy loss operation
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=truth))
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=truth)
     loss_op = tf.reduce_mean(cross_entropy)
     
     # Create an ADAM Optimizer for training
@@ -117,8 +122,7 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
 tests.test_optimize(optimize)
 
 
-def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
-             correct_label, keep_prob, learning_rate):
+def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image, correct_label, keep_prob, learning_rate):
     """
     Train neural network and print out the loss during training.
     :param sess: TF Session
@@ -133,32 +137,32 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param learning_rate: TF Placeholder for learning rate
     """
     # TODO: Implement function
-    for epochs in epochs:
-        for (image, label) in get_batches_fn(batch_size):
-            # Training
-            pass
-    # Initialize tf variables
-  
-    # Initialize list to store history of loss from training steps
-   
-    # Train the network for NUM_EPOCHS epochs.
-   
-        # Reset Batch Counter 
-       
-        # Generate batches of images and labels from the generator.
-       
-            # Handle irregularly shaped batches (not fully-sized)
-           
-             # Train the network for a single batch.
-            
-             # Print out the training progress and loss.
-             
-             # Append the loss to the list of losses for future plotting.         
-
-    # Return the list of losses during training.
-    #return loss_history
     
-    pass
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+    
+        print("Training...")
+        print()
+        for i in range(epochs):
+        
+            for images, labels in get_batches_fn(batch_size):
+
+                # Handle irregularly shaped batches (not fully-sized)
+                if images.shape[0] != batch_size:
+                    # Skip to next epoch
+                    continue
+            
+            # Train 
+                x, loss = sess.run([train_op, cross_entropy_loss], feed_dict={learning_rate: LEARN_RATE, keep_prob: 1.0, input_image: images, correct_label: labels})
+            
+                print("Epoch {} ...".format(i+1))
+                print("Loss = {:.3f}".format(loss))
+                print()
+        
+    #saver.save(sess, './lenet')
+    #print("Model saved")
+    
+        pass
 tests.test_train_nn(train_nn)
 
 
@@ -168,6 +172,11 @@ def run():
     data_dir = './data'
     runs_dir = './runs'
     tests.test_for_kitti_dataset(data_dir)
+    
+    # Initialize labels and learning rate
+    label = tf.placeholder(tf.float32, shape=[BATCH_SIZE, image_shape[0], image_shape[1], num_classes])
+    learning_rate = tf.placeholder(tf.float32, shape=[])
+    
 
     # Download pretrained vgg model
     helper.maybe_download_pretrained_vgg(data_dir)
@@ -191,11 +200,13 @@ def run():
         layer_output = layers(layer3_out, layer4_out, layer7_out, num_classes)
         
         # then optimzer
+        logits, train_op, loss_op = optimize(layer_output, label, learning_rate, num_classes)
 
         # TODO: Train NN using the train_nn function
+        train_nn(sess, N_EPOCHS, BATCH_SIZE, get_batches_fn, train_op, loss_op, input_image, label, keep_prob, learning_rate)
 
         # TODO: Save inference data using helper.save_inference_samples
-        #  helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
+        helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
         # OPTIONAL: Apply the trained model to a video
 
