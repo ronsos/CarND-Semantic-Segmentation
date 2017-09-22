@@ -20,7 +20,7 @@ import project_tests as tests
 #####################################################################
 
 # Define global variables for hyperparameters
-N_EPOCHS = 1          # Number of training epochs
+N_EPOCHS = 2          # Number of training epochs
 LEARN_RATE = 1e-4    # Learning rate for ADAM optimizer
 BATCH_SIZE = 4 #16         # Batch size
 
@@ -187,7 +187,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
             _, loss = sess.run([train_op, cross_entropy_loss], feed_dict=feed)
 
             # Print out the training progress and loss.
-            print("Epoch #{}, Batch #{}, Loss {:.8f}".format((epoch+1), n_batch, loss))             
+            print("Epoch #{}, Batch #{}, Loss {:.8f}".format((i+1), n_batch, loss))             
             
             # Append loss result to list
             train_losses.append(loss)
