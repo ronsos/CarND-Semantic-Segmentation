@@ -20,10 +20,10 @@ import project_tests as tests
 #####################################################################
 
 # Define global variables for hyperparameters
-N_EPOCHS = 2          # Number of training epochs
+N_EPOCHS = 10  # 300        # Number of training epochs
 LEARN_RATE = 1e-4    # Learning rate for ADAM optimizer
-BATCH_SIZE = 4 #16         # Batch size
-
+BATCH_SIZE = 16         # Batch size
+KEEP_PROB = 0.5         # Keep probability
 
 # Check TensorFlow Version
 assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), 'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
@@ -181,7 +181,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
             # Train 
             feed = {input_image: batch_images, 
                     correct_label: batch_labels, 
-                    keep_prob: 1.0,
+                    keep_prob: KEEP_PROB,
                     learning_rate: LEARN_RATE}
                     
             _, loss = sess.run([train_op, cross_entropy_loss], feed_dict=feed)
@@ -192,7 +192,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
             # Append loss result to list
             train_losses.append(loss)
     
-        return train_losses
+    return train_losses
 tests.test_train_nn(train_nn)
 
 
