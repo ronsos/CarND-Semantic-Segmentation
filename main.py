@@ -20,10 +20,10 @@ import project_tests as tests
 #####################################################################
 
 # Define global variables for hyperparameters
-N_EPOCHS = 120         # Number of training epochs
+N_EPOCHS = 200         # Number of training epochs
 LEARN_RATE = 1e-4      # Learning rate for ADAM optimizer
 BATCH_SIZE = 16        # Batch size
-KEEP_PROB = 1.0        # Keep probability
+KEEP_PROB = 0.9        # Keep probability
 
 # Check TensorFlow Version
 assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), 'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
