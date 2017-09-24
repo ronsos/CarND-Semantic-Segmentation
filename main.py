@@ -20,7 +20,7 @@ import project_tests as tests
 #####################################################################
 
 # Define global variables for hyperparameters
-N_EPOCHS = 200         # Number of training epochs
+N_EPOCHS = 300         # Number of training epochs
 LEARN_RATE = 1e-4      # Learning rate for ADAM optimizer
 BATCH_SIZE = 16        # Batch size
 KEEP_PROB = 0.9        # Keep probability
